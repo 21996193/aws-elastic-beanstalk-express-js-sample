@@ -18,6 +18,18 @@ pipeline {
         sh 'npm install --save'
       }
     }
+  stage('Snyk Security Scan') {
+      steps {
+        withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+          sh '''
+            echo "Running Snyk vulnerability scan..."
+            npm install -g snyk
+            snyk auth $SNYK_TOKEN
+            snyk test --severity-threshold=high
+          '''
+        }
+      }
+    }
 
     stage('Run Unit Tests') {
       steps {
