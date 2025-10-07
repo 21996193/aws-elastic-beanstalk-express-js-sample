@@ -55,5 +55,12 @@ pipeline {
         }
       }
     }
+    
+     stage('Archive Artifacts') {
+      steps {
+        echo "Archiving build logs and reports..."
+        archiveArtifacts artifacts: '**/npm-debug.log, **/test-results.xml', allowEmptyArchive: true
+      }
+    }
   }
 }
