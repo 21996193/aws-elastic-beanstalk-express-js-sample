@@ -27,7 +27,7 @@ WORKDIR /usr/src/app
 # Copy only built app and dependencies from the previous stage
 COPY --from=build /usr/src/app .
 
-# Expose port 8080 for the Node.js web app
+# Expose port 8082 for the Node.js web app
 EXPOSE 8082
 
 # Start the application
