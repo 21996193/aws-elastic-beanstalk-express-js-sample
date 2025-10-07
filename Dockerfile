@@ -28,7 +28,7 @@ WORKDIR /usr/src/app
 COPY --from=build /usr/src/app .
 
 # Expose port 8080 for the Node.js web app
-EXPOSE 8080
+EXPOSE 8082
 
 # Start the application
 CMD ["npm", "start"]
