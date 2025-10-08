@@ -8,7 +8,13 @@ pipeline {
             agent { docker { image 'node:16' } }
             steps {
                 echo ' Installing Node dependencies...'
-                sh 'npm install --save'
+                sh '''
+                apt-get update -y
+                apt-get install -y docker.io
+                docker --version
+                npm install --save
+                '''
+                
             }
         }
 
