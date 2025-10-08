@@ -1,66 +1,71 @@
+
 pipeline {
-  agent {
-    docker {
-      image 'node:16'     // Node 16 build agent
-      args '-u root:root --network jenkins_net -v /var/run/docker.sock:/var/run/docker.sock'
-    }
-  }
+    agent none
 
-  environment {
-    DOCKER_IMAGE = "21996193/aws-sample-app:latest"
-  }
+    stages {
 
-  stages {
-
-    stage('Install Dependencies') {
-      steps {
-        echo "Installing project dependencies..."
-        sh 'npm install --save'
-      }
-    }
-  stage('Snyk Security Scan') {
-      steps {
-        withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
-          sh '''
-            echo "Running Snyk vulnerability scan..."
-            npm install -g snyk
-            snyk auth $SNYK_TOKEN
-            snyk test --severity-threshold=high
-          '''
+        stage('Install Node Dependencies') {
+            agent { docker { image 'node:16' } }
+            steps {
+                echo ' Installing Node dependencies...'
+                sh 'npm install --save'
+            }
         }
-      }
-    }
 
-    stage('Run Unit Tests') {
-      steps {
-        echo "Running unit tests..."
-        sh 'npm test || echo \"No tests configured\"'
-      }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        echo "Building Docker image..."
-        sh 'docker build -t $DOCKER_IMAGE .'
-      }
-    }
-
-    stage('Push Docker Image') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh '''
-            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker push $DOCKER_IMAGE
-          '''
+        stage('Run Unit Tests') {
+            agent { docker { image 'node:16' } }
+            steps {
+                echo ' Running tests...'
+                sh 'npm test || echo " No tests configured"'
+            }
         }
-      }
+
+        stage('Snyk Security Scan') {
+            agent { docker { image 'node:16' } }
+            steps {
+                echo ' Running Snyk vulnerability scan...'
+                sh 'npm install -g snyk'
+                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                    sh 'snyk auth $SNYK_TOKEN'
+                    script {
+                        def result = sh(script: 'snyk test --severity-threshold=high', returnStatus: true)
+                        if (result != 0) {
+                            error(' Build failed: High/Critical vulnerabilities detected')
+                        } else {
+                            echo ' No high/critical vulnerabilities found'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image & Push to Registry') {
+            agent any
+            steps {
+                echo ' Building Docker image and pushing to Docker Hub...'
+                script {
+                    // Point Jenkins to DinD service
+                    docker.withServer('tcp://dind:2376', 'dind-certs') {
+                        def imagename = "21996193grace/nodeapp21996193_assignment2:${env.BUILD_NUMBER}"
+                        def img = docker.build(imagename)
+                        echo " Built image: ${imagename}"
+                       
+                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
+                            echo ' Pushing image to Docker Hub registry...'
+                            img.push()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Archive Artifacts') {
+            agent { docker { image 'node:16' } }
+            steps {
+                echo ' Archiving important build artifacts...'
+                archiveArtifacts artifacts: 'package.json, package-lock.json, app.js, Dockerfile', fingerprint: true
+            }
+        }
     }
-    
-     stage('Archive Artifacts') {
-      steps {
-        echo "Archiving build logs and reports..."
-        archiveArtifacts artifacts: '**/npm-debug.log, **/test-results.xml', allowEmptyArchive: true
-      }
-    }
-  }
 }
+
