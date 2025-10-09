@@ -5,13 +5,21 @@ pipeline {
     stages {
 
         stage('Install Node Dependencies') {
-            agent { docker { image 'node:16' } }
-            steps {
-                echo ' Installing Node dependencies...'
-                sh 'npm install --save'
-                
-                
-            }
+            agent {
+        docker {
+          image 'node:16'
+          args '-u root:root --network jenkins --volume /var/jenkins_home:/var/jenkins_home'
+        }
+       }
+       steps {
+        echo 'Installing Node dependencies...'
+        sh '''
+          apt-get update -y
+          apt-get install -y docker.io
+          docker --version
+          npm install --save
+        '''
+       }
         }
 
         stage('Run Unit Tests') {
