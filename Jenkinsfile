@@ -55,7 +55,7 @@ pipeline {
                 echo ' Building Docker image and pushing to Docker Hub...'
                 script {
                     // Point Jenkins to DinD service
-                    docker.withServer('tcp://dind:2377', 'dind-certs') {
+                    docker.withServer('tcp://dind:2376', 'dind-certs') {
                         def imagename = "21996193grace/nodeapp21996193_assignment2:${env.BUILD_NUMBER}"
                         def img = docker.build(imagename)
                         echo " Built image: ${imagename}"
