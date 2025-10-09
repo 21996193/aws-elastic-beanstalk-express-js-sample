@@ -5,21 +5,13 @@ pipeline {
     stages {
 
         stage('Install Node Dependencies') {
-            agent {
-        docker {
-          image 'node:16'
-          args '-u root:root --network jenkins --volume /var/jenkins_home:/var/jenkins_home'
-        }
-       }
-       steps {
-        echo 'Installing Node dependencies...'
-        sh '''
-          apt-get update -y
-          apt-get install -y docker.io
-          docker --version
-          npm install --save
-        '''
-       }
+            agent { docker { image 'node:16' } }
+            steps {
+                echo ' Installing Node dependencies...'
+                sh 'npm install --save'
+                
+                
+            }
         }
 
         stage('Run Unit Tests') {
@@ -55,7 +47,7 @@ pipeline {
                 echo ' Building Docker image and pushing to Docker Hub...'
                 script {
                     // Point Jenkins to DinD service
-                    docker.withServer('tcp://dind:2376', 'dind-certs') {
+                    docker.withServer('tcp://dind:2377', 'dind-certs') {
                         def imagename = "21996193grace/nodeapp21996193_assignment2:${env.BUILD_NUMBER}"
                         def img = docker.build(imagename)
                         echo " Built image: ${imagename}"
